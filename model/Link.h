@@ -18,7 +18,7 @@ public:
         jointAngle(jointAngle), radius(radius), offset(offset), twist(twist){
     }
 
-    double* getForwardMatrix();
+    void getForwardMatrix(double* out);
 };
 
 

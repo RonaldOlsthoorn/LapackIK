@@ -5,8 +5,9 @@
 #include <vector>
 #include "mkl.h"
 #include "model/Link.h"
-#include "model/RotationJoint.h"
-#include "model/PrismaticLink.h"
+#include "model/Schunk.h"
+#include <math.h>
+
 
 int min(int x, int y){
     if(x<y){
@@ -17,104 +18,43 @@ int min(int x, int y){
 
 int main(){
 
+    double bls = 0.3;
+    double sle = 0.328;
+    double elw = 0.323;
+    double wlt = 0.0824;
+
     std::vector<Link*> *links = new std::vector<Link*>();
 
-    links->push_back(new Link(0.0, 1.0, 0.0, 0.0));
-    links->push_back(new Link(0.0, 12.0, 0.0, 0.0));
+    Link* l1 = new Link(0, 0, bls, -M_PI/2);
+    Link* l2 = new Link(0, 0, 0, M_PI/2);
+    Link* l3 = new Link(0, 0, sle, -M_PI/2);
+    Link* l4 = new Link(0, 0, 0, M_PI/2);
+    Link* l5 = new Link(0, 0, elw, -M_PI/2);
+    Link* l6 = new Link(0, 0, 0, M_PI/2);
+    Link* l7 = new Link(0, 0, wlt, 0);
 
-    double *runningMatrix = links->front()->getForwardMatrix();
-    std::cout<<"first matrix adress: "<<runningMatrix;
 
-    for(std::vector<Link*>::iterator it = ++(links->begin()); it != links->end(); it++){
-        double* forwardMatrix = (*it)->getForwardMatrix();
+    links->push_back(l1);
+    links->push_back(l2);
+    links->push_back(l3);
+    links->push_back(l4);
+    links->push_back(l5);
+    links->push_back(l6);
+    links->push_back(l7);
 
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    4, 4, 4, 1, runningMatrix, 4, forwardMatrix, 4, 0, runningMatrix, 4);
+    Schunk *schunk = new Schunk(links);
 
-        mkl_free(forwardMatrix);
-    }
+    double *runningMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
-    std::cout<<"resulting matrix: ";
+    schunk->getForwardMatrix(runningMatrix);
 
-    mkl_free(runningMatrix);
-   return 0;
-}
-
-int matrix_example()
-{
-    double *A, *B, *C;
-    int m, n, k, i, j;
-    double alpha, beta;
-
-    printf ("\n This example computes real matrix C=alpha*A*B+beta*C using \n"
-            " Intel(R) MKL function dgemm, where A, B, and  C are matrices and \n"
-            " alpha and beta are double precision scalars\n\n");
-
-    m = 2000, k = 200, n = 1000;
-    printf (" Initializing data for matrix multiplication C=A*B for matrix \n"
-            " A(%ix%i) and matrix B(%ix%i)\n\n", m, k, k, n);
-    alpha = 1.0; beta = 0.0;
-
-    printf (" Allocating memory for matrices aligned on 64-byte boundary for better \n"
-            " performance \n\n");
-    A = (double *)mkl_malloc( m*k*sizeof( double ), 64 );
-    B = (double *)mkl_malloc( k*n*sizeof( double ), 64 );
-    C = (double *)mkl_malloc( m*n*sizeof( double ), 64 );
-    if (A == NULL || B == NULL || C == NULL) {
-        printf( "\n ERROR: Can't allocate memory for matrices. Aborting... \n\n");
-        mkl_free(A);
-        mkl_free(B);
-        mkl_free(C);
-        return 1;
-    }
-
-    printf (" Intializing matrix data \n\n");
-    for (i = 0; i < (m*k); i++) {
-        A[i] = (double)(i+1);
-    }
-
-    for (i = 0; i < (k*n); i++) {
-        B[i] = (double)(-i-1);
-    }
-
-    for (i = 0; i < (m*n); i++) {
-        C[i] = 0.0;
-    }
-
-    printf (" Computing matrix product using Intel(R) MKL dgemm function via CBLAS interface \n\n");
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                m, n, k, alpha, A, k, B, n, beta, C, n);
-    printf ("\n Computations completed.\n\n");
-
-    printf (" Top left corner of matrix A: \n");
-    for (i=0; i<min(m,6); i++) {
-        for (j=0; j<min(k,6); j++) {
-            printf ("%12.0f", A[j+i*k]);
+    for(int i = 0; i<4; i++){
+        for(int j = 0; j<4; j++){
+            printf ("%12.5G", runningMatrix[4*i+j]);
         }
-        printf ("\n");
+    printf("\n");
     }
 
-    printf ("\n Top left corner of matrix B: \n");
-    for (i=0; i<min(k,6); i++) {
-        for (j=0; j<min(n,6); j++) {
-            printf ("%12.0f", B[j+i*n]);
-        }
-        printf ("\n");
-    }
 
-    printf ("\n Top left corner of matrix C: \n");
-    for (i=0; i<min(m,6); i++) {
-        for (j=0; j<min(n,6); j++) {
-            printf ("%12.5G", C[j+i*n]);
-        }
-        printf ("\n");
-    }
-
-    printf ("\n Deallocating memory \n\n");
-    mkl_free(A);
-    mkl_free(B);
-    mkl_free(C);
-
-    printf (" Example completed. \n\n");
     return 0;
 }

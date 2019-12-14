@@ -8,28 +8,16 @@
 #include "math.h"
 #include "mkl.h"
 
-double *Link::getForwardMatrix() {
-
-    printf("radius: %f \n", radius);
+void Link::getForwardMatrix(double * out) {
 
     double *A = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
-    std::cout<< "A adress: "<<A;
     A[0] = cos(jointAngle);
     A[1] = -sin(jointAngle);
     A[4] = sin(jointAngle);
     A[5] = cos(jointAngle);
     A[10] = 1;
     A[15] = 1;
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", A[4*i+j]);
-        }
-        printf("\n");
-    }
-
-
 
     double *B = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
@@ -66,33 +54,8 @@ double *Link::getForwardMatrix() {
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 4, 4, 4, 1, scrap1, 4, C, 4, 0, scrap2, 4);
 
-    double *res = (double *)mkl_malloc( 4*4*sizeof( double ), 64);
-
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                4, 4, 4, 1, scrap2, 4, D, 4, 0, res, 4);
-
-
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", B[4*i+j]);
-        }
-        printf("\n");
-    }
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", C[4*i+j]);
-        }
-        printf("\n");
-    }
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", D[4*i+j]);
-        }
-        printf("\n");
-    }
+                4, 4, 4, 1, scrap2, 4, D, 4, 0, out, 4);
 
     mkl_free(A);
     mkl_free(B);
@@ -100,6 +63,4 @@ double *Link::getForwardMatrix() {
     mkl_free(D);
     mkl_free(scrap1);
     mkl_free(scrap2);
-
-    return res;
 }
