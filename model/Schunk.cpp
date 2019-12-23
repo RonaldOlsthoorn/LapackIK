@@ -11,39 +11,57 @@ void Schunk::getForwardMatrix(double *out) {
 
     links->front()->getForwardMatrix(out);
 
-    printf("First joint \n");
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", out[4*i+j]);
-        }
-        printf("\n");
-    }
-
     for(std::vector<Link*>::iterator it = ++(links->begin()); it != links->end(); it++){
         double* forwardMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
         (*it)->getForwardMatrix(forwardMatrix);
 
-        printf("joint matrix \n");
-
-        for(int i = 0; i<4; i++){
-            for(int j = 0; j<4; j++){
-                printf ("%12.5G", forwardMatrix[4*i+j]);
-            }
-            printf("\n");
-        }
-
         cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                     4, 4, 4, 1, out, 4, forwardMatrix, 4, 0, out, 4);
 
-        printf("running matrix \n");
-        for(int i = 0; i<4; i++){
-            for(int j = 0; j<4; j++){
-                printf ("%12.5G", out[4*i+j]);
-            }
-            printf("\n");
-        }
-
         mkl_free(forwardMatrix);
     }
+}
+
+void Schunk::setJointAngles(std::vector<double> angles) {
+
+    int i = 0;
+
+    for(auto &link : *links){
+        link->setJointAngle(angles.at(i));
+        i++;
+    }
+
+}
+
+std::vector<double> Schunk::getEndEffectorPosition() {
+
+    double* forwardMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
+
+    getForwardMatrix(forwardMatrix);
+
+    double* origin = (double *)mkl_malloc( 4*1*sizeof( double ), 64 );
+
+    origin[0] = 0;
+    origin[1] = 0;
+    origin[2] = 0;
+    origin[3] = 1;
+
+    double* out = (double *)mkl_malloc( 4*1*sizeof( double ), 64 );
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                4, 1, 4, 1.0, forwardMatrix, 4, origin, 1, 0.0, out, 1);
+
+
+    mkl_free(forwardMatrix);
+    mkl_free(origin);
+
+    std::vector<double> res(3);
+
+    res.push_back(out[0]);
+    res.push_back(out[1]);
+    res.push_back(out[2]);
+
+    mkl_free(out);
+
+    return res;
 }

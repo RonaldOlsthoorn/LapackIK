@@ -19,6 +19,8 @@ public:
     }
 
     void getForwardMatrix(double* out);
+
+    void setJointAngle(double jointAngle){this->jointAngle = jointAngle;};
 };
 
 

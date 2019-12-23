@@ -7,53 +7,78 @@
 #include "model/Link.h"
 #include "model/Schunk.h"
 #include <math.h>
+#include "matplotlibcpp.h"
+#include "model/operations.h"
+#include "model/InverseOperations.h"
 
-
-int min(int x, int y){
-    if(x<y){
-        return x;
-    }
-    return y;
-}
 
 int main(){
+
+    double psi = 0;
 
     double bls = 0.3;
     double sle = 0.328;
     double elw = 0.323;
     double wlt = 0.0824;
 
-    std::vector<Link*> *links = new std::vector<Link*>();
+    Schunk *schunk = new Schunk(bls, sle, elw, wlt);
 
-    Link* l1 = new Link(0, 0, bls, -M_PI/2);
-    Link* l2 = new Link(0, 0, 0, M_PI/2);
-    Link* l3 = new Link(0, 0, sle, -M_PI/2);
-    Link* l4 = new Link(0, 0, 0, M_PI/2);
-    Link* l5 = new Link(0, 0, elw, -M_PI/2);
-    Link* l6 = new Link(0, 0, 0, M_PI/2);
-    Link* l7 = new Link(0, 0, wlt, 0);
+    double *forwardMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
+
+    schunk->getForwardMatrix(forwardMatrix);
+
+    double *efPosition = (double *)mkl_malloc( 3*1*sizeof( double ), 64 );
+    double *efOrientation = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
+
+    efPosition[0] = forwardMatrix[3];
+    efPosition[1] = forwardMatrix[7];
+    efPosition[2] = forwardMatrix[11];
+
+    efOrientation[0] = forwardMatrix[0];
+    efOrientation[1] = forwardMatrix[1];
+    efOrientation[2] = forwardMatrix[2];
+    efOrientation[3] = forwardMatrix[4];
+    efOrientation[4] = forwardMatrix[5];
+    efOrientation[5] = forwardMatrix[6];
+    efOrientation[6] = forwardMatrix[8];
+    efOrientation[7] = forwardMatrix[9];
+    efOrientation[8] = forwardMatrix[10];
+
+    mkl_free(forwardMatrix);
+
+    double *wristPosition = (double *)mkl_malloc( 3*1*sizeof(double), 64);
+    computeWristPosition(efPosition, efOrientation, schunk, wristPosition);
+
+    double *sLw = (double*)mkl_malloc(3*1* sizeof(double), 64);
+    computeWristPositionWRTShoulder(wristPosition, schunk, sLw);
+
+    double elbowAngle = computeJointElbowAngle(schunk, sLw);
+
+    double *skw = (double*)mkl_malloc(3*3* sizeof(double), 64);
+    computeSkW(sLw, skw);
+
+    double *rotationPsi = (double*)mkl_malloc(3*3*(sizeof(double)), 64);
+    computeRotationPsi(skw, psi, rotationPsi);
+
+    double baseAngleShadow = computeBaseAngleShadow(wristPosition);
+    double shoulderAngleShadow = computeShoulderAngleShadow(schunk, sLw, wristPosition);
+
+    double *referencePlaneRotation = (double*)mkl_malloc(3*3* sizeof(double), 64);
+    computeReferencePlaneRotation(baseAngleShadow, shoulderAngleShadow, referencePlaneRotation);
+
+    double *Xs = (double*)mkl_malloc(3*3* sizeof(double), 64);
+    double *Ys = (double*)mkl_malloc(3*3* sizeof(double), 64);
+    double *Zs = (double*)mkl_malloc(3*3* sizeof(double), 64);
+
+    computeXs(skw, referencePlaneRotation, Xs);
+    computeYs(skw, referencePlaneRotation, Ys);
+    computeZs(skw, referencePlaneRotation, Zs);
+
+    double baseAngle = computeBaseAngle(psi, Xs, Ys, Zs);
+    double firstShoulderAngle = computeFirstShoulderAngle(psi, Xs, Ys, Zs);
+    double secondShoulderAngle = computeSecondShoulderAngle(psi, Xs, Ys, Zs);
 
 
-    links->push_back(l1);
-    links->push_back(l2);
-    links->push_back(l3);
-    links->push_back(l4);
-    links->push_back(l5);
-    links->push_back(l6);
-    links->push_back(l7);
-
-    Schunk *schunk = new Schunk(links);
-
-    double *runningMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
-
-    schunk->getForwardMatrix(runningMatrix);
-
-    for(int i = 0; i<4; i++){
-        for(int j = 0; j<4; j++){
-            printf ("%12.5G", runningMatrix[4*i+j]);
-        }
-    printf("\n");
-    }
 
 
     return 0;
