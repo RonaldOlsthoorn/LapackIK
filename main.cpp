@@ -21,7 +21,26 @@ int main(){
     double elw = 0.323;
     double wlt = 0.0824;
 
+    double initAngle1 = 0;
+    double initAngle2 = M_PI_4;
+    double initAngle3 = 0;
+    double initAngle4 = M_PI_2;
+    double initAngle5 = 0;
+    double initAngle6 = -M_PI_4;
+    double initAngle7 = 0;
+
+    std::vector<double> *initAngles = new std::vector<double>();
+
+    initAngles->push_back(initAngle1);
+    initAngles->push_back(initAngle2);
+    initAngles->push_back(initAngle3);
+    initAngles->push_back(initAngle4);
+    initAngles->push_back(initAngle5);
+    initAngles->push_back(initAngle6);
+    initAngles->push_back(initAngle7);
+
     Schunk *schunk = new Schunk(bls, sle, elw, wlt);
+    schunk->setJointAngles(*initAngles);
 
     double *forwardMatrix = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
@@ -78,8 +97,43 @@ int main(){
     double firstShoulderAngle = computeFirstShoulderAngle(psi, Xs, Ys, Zs);
     double secondShoulderAngle = computeSecondShoulderAngle(psi, Xs, Ys, Zs);
 
+    double * shoulderRotation = (double *)mkl_malloc(3*3*sizeof(double), 64);
+    computeShoulderRotation(rotationPsi, referencePlaneRotation, shoulderRotation);
 
+    double * Xw = (double*)mkl_malloc(3*3*sizeof(double), 64);
+    double * Yw = (double*)mkl_malloc(3*3*sizeof(double), 64);
+    double * Zw = (double*)mkl_malloc(3*3*sizeof(double), 64);
 
+    double * threeRFour = (double*)mkl_malloc(3*3* sizeof(double), 64);
+    schunk->getLinks()->at(3)->getRotation(threeRFour);
+
+    double * M4R7 = (double*)mkl_malloc(4*43*3*sizeof(double), 64);
+    schunk->get4R7(M4R7);
+
+    computeXw(threeRFour, skw, referencePlaneRotation, efOrientation, Xw);
+    computeYw(threeRFour, skw, referencePlaneRotation, efOrientation, Yw);
+    computeZw(threeRFour, skw, referencePlaneRotation, efOrientation, Zw);
+
+    test4R7(Xw, Yw, Zw, psi, M4R7);
+
+    double firstWristAngle = computeFirstWristAngle(psi, Xw, Yw, Zw);
+    double secondWristAngle = computeSecondWristAngle(psi, Xw, Yw, Zw, firstWristAngle);
+    double efAngle = computeEFAngle(psi, Xw, Yw, Zw);
+
+    std::vector<double>* resultingJointAngles = new std::vector<double>(7);
+    resultingJointAngles->push_back(baseAngle);
+    resultingJointAngles->push_back(firstShoulderAngle);
+    resultingJointAngles->push_back(secondShoulderAngle);
+    resultingJointAngles->push_back(elbowAngle);
+    resultingJointAngles->push_back(firstWristAngle);
+    resultingJointAngles->push_back(secondWristAngle);
+    resultingJointAngles->push_back(efAngle);
+
+    Schunk *schunk2 = new Schunk(bls, sle, elw, wlt);
+    schunk2->setJointAngles(*resultingJointAngles);
+
+    double *forwardMatrix2 = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
+    schunk2->getForwardMatrix(forwardMatrix2);
 
     return 0;
 }

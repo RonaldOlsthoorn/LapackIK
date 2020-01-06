@@ -7,7 +7,7 @@
 #include <cstdio>
 #include "Schunk.h"
 
-void Schunk::getForwardMatrix(double *out) {
+void Schunk::getForwardMatrix(double *out) const {
 
     links->front()->getForwardMatrix(out);
 
@@ -64,4 +64,26 @@ std::vector<double> Schunk::getEndEffectorPosition() {
     mkl_free(out);
 
     return res;
+}
+
+void Schunk::get4R7(double *out) const {
+
+    double* m5 = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
+    double* m6 = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
+    double* m7 = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
+
+    links->at(4)->getRotation(m5);
+    links->at(5)->getRotation(m6);
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, m5, 3, m6, 3, 0, out, 3);
+
+    links->at(6)->getRotation(m7);
+
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, m7, 3, 0, out, 3);
+
+    mkl_free(m5);
+    mkl_free(m6);
+    mkl_free(m7);
 }

@@ -4,13 +4,15 @@
 
 #include <mkl.h>
 #include "Schunk.h"
+#include "InverseOperations.h"
+
 
 void computeWristPosition(double *endEffectorPosition, double *endEffectorOrientation, const Schunk *schunk, double *out){
 
     double *zUnit = (double *)mkl_malloc( 3*1*sizeof( double ), 64 );
     zUnit[0] = 0;
-    zUnit[0] = 0;
-    zUnit[1] = 1;
+    zUnit[1] = 0;
+    zUnit[2] = 1;
 
     double *scrap = (double *)mkl_malloc( 3*1*sizeof( double ), 64 );
 
@@ -27,6 +29,8 @@ void computeWristPosition(double *endEffectorPosition, double *endEffectorOrient
 
 void computeWristPositionWRTShoulder(double *w, const Schunk *schunk, double *out){
 
+    out[0] = w[0];
+    out[1] = w[1];
     out[2] = w[2] - schunk->getBls();
 }
 
@@ -40,7 +44,7 @@ double computeJointElbowAngle(const Schunk *schunk, double* sLw){
 
 void computeSkW(double *sLw, double *out){
 
-    double norm = sqrt(cblas_dnrm2(3, sLw, 1));
+    double norm = cblas_dnrm2(3, sLw, 1);
     double *suw = (double *)mkl_malloc( 3*1*sizeof( double ), 64 );
 
     for(int i=0;i<3;i++){
@@ -70,7 +74,6 @@ void computeRotationPsi(double *skw, double psi, double *out){
     eye[5] = 0;
     eye[6] = 0;
     eye[7] = 0;
-
     eye[8] = 1;
 
     double *scrap = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
@@ -92,8 +95,10 @@ double computeBaseAngleShadow(double *w){
 
 double computeShoulderAngleShadow(const Schunk *schunk, double * sLw, double *w){
 
-    double alpha = asin((w[2]- schunk->getBls())/sqrt(cblas_dnrm2(3, sLw, 1)));
-    double beta = acos((pow(schunk->getSle(), 2) + cblas_dnrm2(3, sLw, 1) - pow(schunk->getElw(), 2))/(2*schunk->getSle()*sqrt(cblas_dnrm2(3, sLw, 1))));
+    double euclidSlw = cblas_dnrm2(3, sLw, 1);
+
+    double alpha = asin((w[2]- schunk->getBls())/euclidSlw);
+    double beta = acos((pow(schunk->getSle(), 2) + pow(euclidSlw, 2) - pow(schunk->getElw(), 2))/(2*schunk->getSle()*euclidSlw));
 
     return M_PI_2 - alpha - beta;
 }
@@ -101,9 +106,9 @@ double computeShoulderAngleShadow(const Schunk *schunk, double * sLw, double *w)
 void computeReferencePlaneRotation(double baseAngleSchadow, double shoulderAngleShadow, double *out){
 
     out[0] = cos(baseAngleSchadow) * cos(shoulderAngleShadow);
-    out[1] = -cos(baseAngleSchadow) * sin(baseAngleSchadow);
+    out[1] = -cos(baseAngleSchadow) * sin(shoulderAngleShadow);
     out[2] = -sin(baseAngleSchadow);
-    out[3] = cos(shoulderAngleShadow) * cos(baseAngleSchadow);
+    out[3] = cos(shoulderAngleShadow) * sin(baseAngleSchadow);
     out[4] = -sin(baseAngleSchadow) * sin(shoulderAngleShadow);
     out[5] = cos(baseAngleSchadow);
     out[6] = -sin(shoulderAngleShadow);
@@ -131,12 +136,12 @@ void computeZs(double * sKw, double * referencePlaneRotation, double * out){
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 3, 3, 3, 1, sKw, 3, sKw, 3, 0, out, 3);
 
+    out[0]++;
+    out[4]++;
+    out[8]++;
+
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 3, 3, 3, 1, out, 3, referencePlaneRotation, 3, 0, out, 3);
-
-    out[0] += referencePlaneRotation[0];
-    out[4] += referencePlaneRotation[4];
-    out[8] += referencePlaneRotation[8];
 }
 
 double computeBaseAngle(double psi, double * Xs, double * Ys, double * Zs){
@@ -160,28 +165,35 @@ void computeShoulderRotation(double * rotationMatrix, double * referencePlaneRot
                 3, 3, 3, 1, rotationMatrix, 3, referencePlaneRotation, 3, 0, out, 3);
 }
 
-void computeXw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out){
+void computeXw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out){
 
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans,
-                3, 3, 3, 1, elbowRotation, 3, sKw, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+            3, 3, 3, 1, sKw, 3, referencePlaneRotation, 3, 0, out, 3);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                3, 3, 3, 1, out, 3, referencePlaneRotation, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, elbowRotation, 3, 0, out, 3);
+
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, efRotation, 3, 0, out, 3);
+
 }
 
-void computeYw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out){
+void computeYw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out){
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 3, 3, 3, 1, sKw, 3, sKw, 3, 0, out, 3);
 
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans,
-                3, 3, 3, 1, elbowRotation, 3, out, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, referencePlaneRotation, 3, 0, out, 3);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                3, 3, 3, -1, out, 3, referencePlaneRotation, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, elbowRotation, 3, 0, out, 3);
+
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                3, 3, 3, -1, out, 3, efRotation, 3, 0, out, 3);
 }
 
-void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out){
+void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out){
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 3, 3, 3, 1, sKw, 3, sKw, 3, 0, out, 3);
@@ -190,24 +202,42 @@ void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRota
     out[4] += 1;
     out[8] += 1;
 
-    cblas_dgemm(CblasRowMajor, CblasTrans, CblasTrans,
-                3, 3, 3, 1, elbowRotation, 3, out, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, referencePlaneRotation, 3, 0, out, 3);
 
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                3, 3, 3, -1, out, 3, referencePlaneRotation, 3, 0, out, 3);
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, elbowRotation, 3, 0, out, 3);
+
+
+    cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
+                3, 3, 3, 1, out, 3, efRotation, 3, 0, out, 3);
 }
 
 double computeFirstWristAngle(double psi, double * Xw, double * Yw, double * Zw){
 
-    return atan((sin(psi)*Xw[5] + cos((psi)*Yw[5] +Zw[5]))/(sin(psi)*Xw[2] + cos(psi)*Yw[2] + Zw[2]));
+    return atan2((sin(psi)*Xw[5] + cos(psi)*Yw[5] +Zw[5]),  (sin(psi)*Xw[2] + cos(psi)*Yw[2] + Zw[2]));
 }
 
-double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw){
+double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw, double firstWristAngle){
 
-    return acos(sin(psi)*Xw[8] + cos(psi)*Yw[8] + Zw[8]);
+    return atan2((1/cos(firstWristAngle))*(sin(psi)*Xw[2]+cos(psi)*Yw[2]+Zw[2]),
+    sin(psi)*Xw[8] +cos(psi)*Yw[8]+Zw[8]);
 }
 
 double computeEFAngle(double psi, double * Xw, double * Yw, double * Zw){
 
-    return atan(-(sin(psi)*Xw[7] + cos(psi)*Yw[7] + Zw[7])/(sin(psi)*Xw[6] +cos(psi)*Yw[6]+Zw[6]));
+    return atan2((sin(psi)*Xw[7] + cos(psi)*Yw[7] + Zw[7]), -1 * (sin(psi)*Xw[6] +cos(psi)*Yw[6]+Zw[6]));
+}
+
+void test4R7(double *Xw, double *Yw, double *Zw, double psi, double *M4RR7) {
+
+    double* res = (double *)mkl_malloc( 3*3*sizeof( double ), 64 );
+
+    for(int i = 0;i<9;i++){
+
+        res[i] = sin(psi) * Xw[i] + cos(psi) * Yw[i] + Zw[i] - M4RR7[i];
+    }
+
+    mkl_free(res);
+
 }

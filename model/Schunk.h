@@ -18,7 +18,6 @@ private:
     double elw;
     double wlt;
 
-
     std::vector<Link*> *links;
 
 public:
@@ -32,7 +31,7 @@ public:
         Link* l6 = new Link(0, 0, 0, M_PI/2);
         Link* l7 = new Link(0, 0, wlt, 0);
 
-        links = new std::vector<Link*>(7);
+        links = new std::vector<Link*>();
 
         links->push_back(l1);
         links->push_back(l2);
@@ -43,7 +42,7 @@ public:
         links->push_back(l7);
     };
 
-    void getForwardMatrix(double* out);
+    void getForwardMatrix(double* out) const;
     void setJointAngles(std::vector<double> angles);
     std::vector<double> getEndEffectorPosition();
 
@@ -51,6 +50,10 @@ public:
     double getSle() const {return sle;}
     double getElw() const {return elw;}
     double getWlt() const {return wlt;}
+
+    std::vector<Link*> * getLinks() const {return links;}
+
+    void get4R7(double* out) const;
 
 };
 

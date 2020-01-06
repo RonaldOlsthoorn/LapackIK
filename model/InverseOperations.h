@@ -37,16 +37,18 @@ double computeSecondShoulderAngle(double psi, double * Xs, double * Ys, double *
 
 void computeShoulderRotation(double * rotationMatrix, double * referencePlaneRotation, double * out);
 
-void computeXw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out);
+void computeXw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out);
 
-void computeYw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out);
+void computeYw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out);
 
-void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * out);
+void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRotation, double * efRotation, double * out);
 
 double computeFirstWristAngle(double psi, double * Xw, double * Yw, double * Zw);
 
-double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw);
+double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw, double firstWristAngle);
 
 double computeEFAngle(double psi, double * Xw, double * Yw, double * Zw);
+
+void test4R7(double *Xw, double *Yw, double *Zw, double psi, double * M4RR7);
 
 #endif //LAPACKIK_INVERSEOPERATIONS_H

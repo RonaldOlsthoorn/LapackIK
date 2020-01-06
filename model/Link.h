@@ -18,7 +18,9 @@ public:
         jointAngle(jointAngle), radius(radius), offset(offset), twist(twist){
     }
 
-    void getForwardMatrix(double* out);
+    void getForwardMatrix(double* out) const;
+
+    void getRotation(double * out) const;
 
     void setJointAngle(double jointAngle){this->jointAngle = jointAngle;};
 };

@@ -8,12 +8,13 @@
 #include "math.h"
 #include "mkl.h"
 
-void Link::getForwardMatrix(double * out) {
+void Link::getForwardMatrix(double * out) const{
 
     double *A = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
     A[0] = cos(jointAngle);
     A[1] = -sin(jointAngle);
+    A[2] = 0;
     A[3] = 0;
     A[4] = sin(jointAngle);
     A[5] = cos(jointAngle);
@@ -31,6 +32,7 @@ void Link::getForwardMatrix(double * out) {
     double *B = (double *)mkl_malloc( 4*4*sizeof( double ), 64 );
 
     B[0] = 1;
+    B[1] = 0;
     B[2] = 0;
     B[3] = 0;
     B[4] = 0;
@@ -104,3 +106,24 @@ void Link::getForwardMatrix(double * out) {
     mkl_free(scrap1);
     mkl_free(scrap2);
 }
+
+
+void Link::getRotation(double *out) const{
+
+    double *scrap = (double*)mkl_malloc(4*4* sizeof(double), 64);
+
+    this->getForwardMatrix(scrap);
+
+    out[0] = scrap[0];
+    out[1] = scrap[1];
+    out[2] = scrap[2];
+    out[3] = scrap[4];
+    out[4] = scrap[5];
+    out[5] = scrap[6];
+    out[6] = scrap[8];
+    out[7] = scrap[9];
+    out[8] = scrap[10];
+
+    mkl_free(scrap);
+};
+
