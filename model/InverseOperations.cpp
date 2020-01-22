@@ -213,20 +213,27 @@ void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRota
                 3, 3, 3, 1, out, 3, efRotation, 3, 0, out, 3);
 }
 
-double computeFirstWristAngle(double psi, double * Xw, double * Yw, double * Zw){
+double computeFirstWristAngle(double psi, double * Xw, double * Yw, double * Zw, double secondWristAngle){
 
-    return atan2((sin(psi)*Xw[5] + cos(psi)*Yw[5] +Zw[5]),  (sin(psi)*Xw[2] + cos(psi)*Yw[2] + Zw[2]));
+    if(secondWristAngle < 0){
+        return atan2(-(sin(psi)*Xw[5] + cos(psi)*Yw[5] +Zw[5]), -(sin(psi)*Xw[2] + cos(psi)*Yw[2] + Zw[2]))
+    }else{
+        return atan2((sin(psi)*Xw[5] + cos(psi)*Yw[5] +Zw[5]), (sin(psi)*Xw[2] + cos(psi)*Yw[2] + Zw[2]));
+    }
 }
 
-double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw, double firstWristAngle){
+double computeSecondWristAngle(double psi, double * Xw, double * Yw, double * Zw){
 
-    return atan2((1/cos(firstWristAngle))*(sin(psi)*Xw[2]+cos(psi)*Yw[2]+Zw[2]),
-    sin(psi)*Xw[8] +cos(psi)*Yw[8]+Zw[8]);
+    return -acos(sin(psi)*Xw[8] + cos(psi)*Yw[8] + Zw);
 }
 
-double computeEFAngle(double psi, double * Xw, double * Yw, double * Zw){
+double computeEFAngle(double psi, double * Xw, double * Yw, double * Zw, double secondWristAngle){
 
-    return atan2((sin(psi)*Xw[7] + cos(psi)*Yw[7] + Zw[7]), -1 * (sin(psi)*Xw[6] +cos(psi)*Yw[6]+Zw[6]));
+    if(secondWristAngle < 0){
+        return atan2(-(sin(psi)*Xw[7] + cos(psi)*Yw[7] + Zw[7]),(sin(psi)*Xw[6] + cos(psi)*Yw[6] + Zw[6]));
+    }else{
+        return atan2((sin(psi)*Xw[7] + cos(psi)*Yw[7] + Zw[7]),-(sin(psi)*Xw[6] + cos(psi)*Yw[6] + Zw[6]));
+    }
 }
 
 void test4R7(double *Xw, double *Yw, double *Zw, double psi, double *M4RR7) {
