@@ -208,7 +208,6 @@ void computeZw(double * elbowRotation, double * sKw, double * referencePlaneRota
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 3, 3, 3, 1, out, 3, elbowRotation, 3, 0, out, 3);
 
-
     cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans,
                 3, 3, 3, 1, out, 3, efRotation, 3, 0, out, 3);
 }
